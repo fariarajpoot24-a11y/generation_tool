@@ -207,4 +207,4 @@ def export_xlsx():
 
 
 if __name__ == "__main__":
-    app.run(debug=False, port=5000, threaded=True)
+    app.run(debug=False, host="0.0.0.0", port=int(os.getenv("PORT", 5000)), threaded=True)

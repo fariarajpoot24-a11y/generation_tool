@@ -145,7 +145,15 @@ def scrape_google_maps(keyword, location, max_results, headless=True, progress=l
     results, seen = [], set()
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=headless, args=["--lang=en-US"])
+                browser = pw.chromium.launch(
+            headless=headless,
+            args=[
+                "--lang=en-US",
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+            ],
+        )
         try:
             ctx = browser.new_context(
                 user_agent=USER_AGENT, locale="en-US", viewport={"width": 1280, "height": 900}
