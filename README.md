@@ -1,115 +1,91 @@
-Lead Finder
+# Lead Finder (Google Maps Scraper)
 
-Lead Finder is a Flask-based web application that scrapes business listings from Google Maps using Playwright (without requiring a Google Maps API key).
+Flask app that scrapes Google Maps with Playwright (Chromium) and exports results to CSV or Excel. No API key needed.
 
-It allows users to collect business information and export the results to CSV or Excel.
+## Setup (Python 3.11.9)
 
-Features
-Scrapes business listings from Google Maps.
-Collects business details:
-Name
-Category
-Address
-Phone
-Website
-Rating
-Reviews
-Status
-Google Maps URL
-Coordinates
-Exports results to CSV or Excel.
-Uses Playwright for browser automation.
-Flask-based web interface.
-Project Structure
-text
-Lead-Finder/
-│
-├── static/
-├── templates/
-├── .env.example
-├── .gitignore
-├── README.md
-├── app.py
-├── requirements.txt
-└── scraper.py
+### 1. Create Virtual Environment
 
-Requirements
-Python 3.11
-Google Chrome / Chromium
-Required Python packages
-Installation
-1. Clone the Repository
-bash
-git clone YOUR_REPOSITORY_URL
-cd Lead-Finder
-
-2. Create Virtual Environment
-
-Windows:
-
-bash
+**Windows:**
+```bash
 python -m venv venv
 venv\Scripts\activate
+```
 
-
-macOS/Linux:
-
-bash
+**macOS/Linux:**
+```bash
 python3 -m venv venv
 source venv/bin/activate
+```
 
-3. Install Dependencies
-bash
+### 2. Install Dependencies
+
+```bash
 pip install -r requirements.txt
+```
 
-4. Install Playwright Chromium
-bash
+### 3. Install Playwright Chromium
+
+```bash
 playwright install chromium
+```
 
-5. Configure Environment Variables
+### 4. Run the Application
 
-Copy .env.example to .env.
-
-Windows:
-
-bash
-copy .env.example .env
-
-
-macOS/Linux:
-
-bash
-cp .env.example .env
-
-
-Configure the required environment variables in your .env file.
-
-6. Run the Application
-bash
+```bash
 python app.py
+```
 
+Open your browser:
 
-Open your browser and visit:
+[http://127.0.0.1:5000](http://127.0.0.1:5000)
 
-text
-http://127.0.0.1:5000
+## How It Works
 
-Performance
-Approximate scraping speed: 2–3 seconds per business.
-60 results may take approximately 2–3 minutes.
+1. `scraper.py` opens `google.com/maps/search/<type> in <location>`, scrolls the results list and collects place links.
+2. It then opens each place page and reads name, category, address, phone, website, rating, reviews, status and coordinates.
+3. `app.py` runs this as a background job; the page polls for progress and shows rows as they arrive. You can press Stop and keep what was collected.
 
-Actual speed depends on network conditions and website responses.
+## Troubleshooting
 
-Important Notes
-Set HEADLESS=false in .env to view the browser during debugging.
-Google Maps page structure may change, requiring scraper selector updates.
-Excessive automated requests may trigger CAPTCHA or temporary restrictions.
-Respect Google's Terms of Service and applicable data-protection laws.
-Disclaimer
+- **Nothing loads / CAPTCHA:** Run with the browser visible to see what happens:
 
-This project is intended for educational and legitimate business research purposes. Use responsibly and ensure compliance with applicable website terms and privacy regulations.
+  Windows CMD:
+  ```bash
+  set HEADLESS=false
+  python app.py
+  ```
 
-Author
+  macOS/Linux:
+  ```bash
+  HEADLESS=false python app.py
+  ```
 
-Lead Finder – Lead Generation Tool
-yh paste krna ha
+- **A field comes back empty for every place:** Google changed its markup. Update the selectors in `scraper.py` (`FEED`, `PLACE_LINK`, `EXTRACT_JS`).
+- Expect roughly 3–5 seconds per business. Keep result counts modest and avoid rapid repeated runs to reduce the chance of being blocked.
+- Emails are not shown on Google Maps, so they are not collected.
+
+## Important
+
+Scraping Google Maps is against Google's Terms of Service and can get your IP temporarily blocked. Use it for low-volume, personal research, and follow applicable data-protection and anti-spam laws when contacting businesses.
+
+The official Places API is the compliant option.
+
+## Deploying on Render
+
+Chromium needs system libraries, so use **Docker**, not the native Python runtime.
+
+1. Push this folder to GitHub.
+2. Render → New → Web Service → Connect the repository → **Language: Docker** (it finds the `Dockerfile`).
+3. Choose an instance with at least 1–2 GB RAM (Chromium often crashes on 512 MB).
+4. Deploy. No environment variables are required.
+
+### Native Python Runtime
+
+If you must use the native Python runtime instead:
+
+- Set `PYTHON_VERSION=3.11.9`.
+- The `.python-version` file does this too.
+- Chromium will still fail to launch there because system libraries cannot be installed.
+
+**Note:** Google often shows CAPTCHAs to cloud/datacenter IPs, so scraping may work locally but fail on a server.
