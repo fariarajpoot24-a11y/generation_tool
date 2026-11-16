@@ -5,6 +5,7 @@ selectors below. Scraping may also violate Google's Terms of Service.
 """
 import random
 import re
+import time
 import urllib.parse
 
 from playwright.sync_api import TimeoutError as PWTimeout
@@ -143,26 +144,23 @@ def scrape_google_maps(keyword, location, max_results, headless=True, progress=l
     query = urllib.parse.quote_plus(f"{keyword} in {location}")
     url = f"https://www.google.com/maps/search/{query}?hl=en"
     results, seen = [], set()
+    deadline = time.time() + 240  # stop after 4 minutes, return what we have
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(
             headless=headless,
-                       args=[
+            args=[
                 "--lang=en-US",
                 "--no-sandbox",             # required inside Docker / Render
                 "--disable-dev-shm-usage",  # /dev/shm is tiny on Render
                 "--disable-gpu",
                 "--disable-extensions",
-                "--single-process",
-                "--no-zygote",
-                "--disable-background-networking",
-                "--disable-software-rasterizer",
-                "--js-flags=--max-old-space-size=160",
             ],
+            timeout=60000,  # fail after 60s instead of hanging forever
         )
         try:
             ctx = browser.new_context(
-            user_agent=USER_AGENT, locale="en-US", viewport={"width": 800, "height": 600}
+                user_agent=USER_AGENT, locale="en-US", viewport={"width": 1024, "height": 768}
             )
             # Skip images/fonts/media: far less RAM and bandwidth on small servers.
             ctx.route(
@@ -171,6 +169,8 @@ def scrape_google_maps(keyword, location, max_results, headless=True, progress=l
                 if route.request.resource_type in ("image", "media", "font")
                 else route.continue_(),
             )
+            ctx.set_default_timeout(20000)
+            ctx.set_default_navigation_timeout(40000)
             page = ctx.new_page()
             progress("Opening Google Maps...")
             page.goto(url, wait_until="domcontentloaded", timeout=45000)
@@ -184,6 +184,8 @@ def scrape_google_maps(keyword, location, max_results, headless=True, progress=l
                 return []
 
             for i, card in enumerate(cards, start=1):
+                if time.time() > deadline:
+                    break
                 progress(f"Reading details {i}/{len(cards)}...")
                 try:
                     row = _scrape_place(page, card)
