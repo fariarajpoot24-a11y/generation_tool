@@ -145,18 +145,26 @@ def scrape_google_maps(keyword, location, max_results, headless=True, progress=l
     results, seen = [], set()
 
     with sync_playwright() as pw:
-                browser = pw.chromium.launch(
+        browser = pw.chromium.launch(
             headless=headless,
             args=[
                 "--lang=en-US",
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
+                "--no-sandbox",             # required inside Docker / Render
+                "--disable-dev-shm-usage",  # /dev/shm is tiny on Render
                 "--disable-gpu",
+                "--disable-extensions",
             ],
         )
         try:
             ctx = browser.new_context(
                 user_agent=USER_AGENT, locale="en-US", viewport={"width": 1280, "height": 900}
+            )
+            # Skip images/fonts/media: far less RAM and bandwidth on small servers.
+            ctx.route(
+                "**/*",
+                lambda route: route.abort()
+                if route.request.resource_type in ("image", "media", "font")
+                else route.continue_(),
             )
             page = ctx.new_page()
             progress("Opening Google Maps...")
